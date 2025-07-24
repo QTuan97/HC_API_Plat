@@ -3,11 +3,11 @@ version: '3.8'
 services:
   db:
     image: postgres:15
-    container_name: fakeapi_db
+    container_name: hcfakeapi_db
     environment:
       POSTGRES_USER: fakeuser
       POSTGRES_PASSWORD: fakepass
-      POSTGRES_DB: fakeapi
+      POSTGRES_DB: hcfakeapi
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -15,16 +15,17 @@ services:
 
   web:
     build: .
-    container_name: fakeapi_web
+    container_name: hcfakeapi_web
     working_dir: /app
-    command: python -u app.py
     volumes:
       - .:/app
     ports:
       - "5001:5000"
     environment:
       PYTHONUNBUFFERED: "1"
-      DATABASE_URL: postgresql://fakeuser:fakepass@db:5432/fakeapi
+      DATABASE_URL: postgresql://fakeuser:fakepass@db:5432/hcfakeapi
+      SECRET_KEY: supersecretkey
+      JWT_SECRET_KEY: supersecretkey
       FLASK_ENV: development
       PYTHONPATH: /app
     depends_on:
