@@ -3,7 +3,7 @@ from flask import (
     Blueprint, render_template, request,
     session, redirect, url_for, flash
 )
-from .crud import create_user, get_user_by_username, verify_user
+from .crud import create_user, get_user_by_username, verify_user, get_project
 
 ui_bp = Blueprint("ui", __name__)
 # UI Routes
@@ -53,10 +53,16 @@ def logout():
 def index():
     return render_template("index.html")
 
-@ui_bp.route("/rules")
+@ui_bp.route("/projects")
 @login_required
-def rules_page():
-    return render_template("rules.html")
+def projects_page():
+    return render_template("projects.html")
+
+@ui_bp.route("/projects/<int:pid>/rules")
+@login_required
+def project_rules_page(pid):
+    proj = get_project(pid) or abort(404)
+    return render_template("rules.html", project=proj)
 
 @ui_bp.route("/logs")
 @login_required

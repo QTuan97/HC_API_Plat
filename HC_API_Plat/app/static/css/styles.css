@@ -3,3 +3,57 @@ body { background-color: #f8f9fa; }
 textarea.form-control {
   font-family: monospace;
 }
+
+/* Card lift on hover */
+.project-card {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Button outlines already give a fill-on-hover effect, but add a bit more padding */
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-danger {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+/* Slight color deepening on hover */
+.btn-outline-primary:hover {
+  background-color: rgba(13, 110, 253, 0.1);
+}
+.btn-outline-secondary:hover {
+  background-color: rgba(108, 117, 125, 0.1);
+}
+.btn-outline-danger:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+#rules-table {
+  width: 100%;
+  table-layout: fixed;
+}
+#rules-table th,
+#rules-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#rules-table th:nth-child(1), #rules-table td:nth-child(1) { width: 5%; }
+#rules-table th:nth-child(2), #rules-table td:nth-child(2) { width: 10%; }
+#rules-table th:nth-child(3), #rules-table td:nth-child(3) { width: 40%; }
+#rules-table th:nth-child(4), #rules-table td:nth-child(4) { width: 10%; }
+#rules-table th:nth-child(5), #rules-table td:nth-child(5) { width: 10%; }
+#rules-table th:nth-child(6), #rules-table td:nth-child(6) { width: 25%; }
+
+.card.project-card, .card {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}

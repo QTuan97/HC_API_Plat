@@ -1,17 +1,20 @@
-# app/routes_api.py
+import time
 from flask import Blueprint, request, jsonify, abort, Response
 from flask_jwt_extended import create_access_token, jwt_required
-import time
 from .crud import (
-    create_user,list_users, verify_user,
+    create_user, verify_user, list_users,
+    create_project, list_projects, get_project,
+    update_project, delete_project,
     create_rule, list_rules, update_rule, delete_rule,
-    find_matching_rule, log_request, list_logs, clear_logs
+    find_matching_rule, toggle_rule,
+    log_request, list_logs, clear_logs
 )
+from .models import MockRule
 from .template_engine import render_handlebars
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
-# ─── Auth (JWT) ───────────────────────────────────────────────────────────────
+# Auth ( JWT )
 @api_bp.route("/auth/register", methods=["POST"])
 def api_auth_register():
     data = request.get_json(force=True)
@@ -28,87 +31,135 @@ def api_auth_register():
 @api_bp.route("/auth/login", methods=["POST"])
 def api_auth_login():
     data = request.get_json(force=True)
-    username = data.get("username")
-    password = data.get("password")
-    user = verify_user(username, password)
+    user = verify_user(data.get("username"), data.get("password"))
     if not user:
         abort(401, "Invalid credentials")
     token = create_access_token(identity=user.id)
     return jsonify(access_token=token), 200
 
-# ─── User management (protected) ─────────────────────────────────────────────
+# Users
 @api_bp.route("/users", methods=["GET"])
 @jwt_required()
 def api_users_list():
-    users = list_users()
-    return jsonify([{
-        "id": u.id,
-        "username": u.username,
-        "created_at": u.created_at.isoformat()
-    } for u in users])
+    return jsonify([
+        {"id":u.id, "username":u.username, "created_at":u.created_at.isoformat()}
+        for u in list_users()
+    ])
 
-# ─── Rules CRUD ───────────────────────────────────────────────────────────────
-@api_bp.route("/rules", methods=["GET", "POST"])
-def api_rules():
+# Projects
+@api_bp.route("/projects", methods=["GET", "POST"])
+def api_projects():
     if request.method == "POST":
         data = request.get_json(force=True)
-        rule = create_rule(data)
-        return jsonify({ "id":rule.id, **data, "created_at":rule.created_at.isoformat() }), 201
+        proj = create_project(data)
+        return jsonify({
+            "id": proj.id,
+            **data,
+            "created_at": proj.created_at.isoformat()
+        }), 201
     return jsonify([{
-        "id":r.id,
-        "method":r.method,
-        "path_regex":r.path_regex,
-        "status_code":r.status_code,
-        "headers":r.headers,
-        "body_template":r.body_template,
-        "delay":r.delay,
-        "created_at":r.created_at.isoformat()
-    } for r in list_rules()])
+        "id":          p.id,
+        "name":        p.name,
+        "base_url":    p.base_url,
+        "description": p.description,
+        "created_at":  p.created_at.isoformat()
+    } for p in list_projects()])
 
-@api_bp.route("/rules/<int:rule_id>", methods=["PUT"])
-def api_update_rule(rule_id):
+@api_bp.route("/projects/<int:project_id>", methods=["PUT"])
+def api_update_project(project_id):
+    data = request.get_json(force=True)
+    proj = update_project(project_id, data)
+    if not proj:
+        abort(404, "Project not found")
+    return jsonify({
+        "id":          proj.id,
+        "name":        proj.name,
+        "base_url":    proj.base_url,
+        "description": proj.description,
+        "created_at":  proj.created_at.isoformat()
+    })
+
+@api_bp.route("/projects/<int:project_id>", methods=["DELETE"])
+def api_delete_project(project_id):
+    if not delete_project(project_id):
+        abort(404, "Project not found")
+    return ("", 204)
+
+# Rules
+@api_bp.route("/projects/<int:pid>/rules", methods=["GET","POST"])
+def api_rules(pid):
+    proj = get_project(pid) or abort(404, "Project not found")
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        data["project_id"] = pid
+        rule = create_rule(data)
+        return jsonify({
+            "id":         rule.id,
+            **data,
+            "created_at": rule.created_at.isoformat()
+        }), 201
+    rules = MockRule.query.filter_by(project_id=pid).all()
+    return jsonify([{
+        "id":            r.id,
+        "project_id":    r.project_id,
+        "method":        r.method,
+        "path_regex":    r.path_regex,
+        "status_code":   r.status_code,
+        "headers":       r.headers,
+        "body_template": r.body_template,
+        "enabled":       r.enabled,
+        "delay":         r.delay,
+        "created_at":    r.created_at.isoformat()
+    } for r in rules])
+
+@api_bp.route("/projects/<int:pid>/rules/<int:rule_id>", methods=["PUT"])
+def api_update_rule(pid, rule_id):
+    get_project(pid) or abort(404, "Project not found")
     data = request.get_json(force=True)
     rule = update_rule(rule_id, data)
     if not rule:
         abort(404, "Rule not found")
     return jsonify({
-        "id": rule.id,
-        "method": rule.method,
-        "path_regex": rule.path_regex,
-        "status_code": rule.status_code,
-        "headers": rule.headers,
-        "body_template": rule.body_template,
-        "delay": rule.delay,
+        "id":         rule.id,
+        **data,
         "created_at": rule.created_at.isoformat()
     })
 
-@api_bp.route("/rules/<int:rule_id>", methods=["DELETE"])
-def api_delete_rule(rule_id):
+@api_bp.route("/projects/<int:pid>/rules/<int:rule_id>", methods=["DELETE"])
+def api_delete_rule(pid, rule_id):
+    get_project(pid) or abort(404, "Project not found")
     if not delete_rule(rule_id):
         abort(404, "Rule not found")
     return ("", 204)
 
-# ─── Logs CRUD ────────────────────────────────────────────────────────────────
+@api_bp.route("/projects/<int:pid>/rules/<int:rule_id>/toggle", methods=["POST"])
+def api_toggle_rule(pid, rule_id):
+    get_project(pid) or abort(404, "Project not found")
+    rule = toggle_rule(rule_id)
+    if not rule:
+        abort(404, "Rule not found")
+    return jsonify({"id": rule.id, "enabled": rule.enabled})
+
+# Logs
 @api_bp.route("/logs", methods=["GET"])
 def api_logs():
-    logs = list_logs(limit=200)
     return jsonify([{
-        "id": l.id,
-        "timestamp": l.timestamp.isoformat(),
-        "method": l.method,
-        "path": l.path,
-        "headers": l.headers,
-        "query": l.query_params,
-        "body": l.body,
+        "id":              l.id,
+        "timestamp":       l.timestamp.isoformat(),
+        "method":          l.method,
+        "path":            l.path,
+        "headers":         l.headers,
+        "query":           l.query_params,
+        "body":            l.body,
         "matched_rule_id": l.matched_rule_id
-    } for l in logs])
+    } for l in list_logs(limit=200)])
 
 @api_bp.route("/logs", methods=["DELETE"])
 def api_clear_logs():
     deleted = clear_logs()
     return jsonify({"deleted": deleted}), 200
 
-# ─── Catch-all mock endpoint ─────────────────────────────────────────────────
+# Catch-all Mock Endpoint
 @api_bp.route("/<path:path>", methods=["GET","POST","PUT","DELETE","PATCH"])
 def mock_all(path):
     full_path = "/" + path
@@ -117,17 +168,14 @@ def mock_all(path):
     headers   = dict(request.headers)
     query     = request.args.to_dict()
 
-    rule       = find_matching_rule(method, full_path)
-    matched_id = rule.id if rule else None
-
-    # logs
+    rule = find_matching_rule(method, full_path)
     log_request({
-        "method": method,
-        "path": full_path,
-        "headers": headers,
-        "query": query,
-        "body": body,
-        "matched_rule_id": matched_id
+        "method":          method,
+        "path":            full_path,
+        "headers":         headers,
+        "query":           query,
+        "body":            body,
+        "matched_rule_id": rule.id if rule else None
     })
 
     if not rule:
@@ -137,18 +185,16 @@ def mock_all(path):
         time.sleep(rule.delay)
 
     tpl_str = rule.body_template.get("template")
-    if not tpl_str:
-        abort(500, "Template field missing in stored JSONB data")
-
-    ctx = {"request": {
-        "method": method,
-        "path":   full_path,
-        "headers": headers,
-        "query":  query,
-        "body":   body
-    }}
     try:
-        content = render_handlebars(tpl_str, ctx)
+        content = render_handlebars(tpl_str, {
+            "request": {
+                "method": method,
+                "path": full_path,
+                "headers": headers,
+                "query": query,
+                "body": body
+            }
+        })
     except Exception as e:
         abort(500, f"Template error: {e}")
 
