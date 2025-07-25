@@ -151,7 +151,8 @@ def api_logs():
         "headers":         l.headers,
         "query":           l.query_params,
         "body":            l.body,
-        "matched_rule_id": l.matched_rule_id
+        "matched_rule_id": l.matched_rule_id,
+        "status_code":     l.status_code
     } for l in list_logs(limit=200)])
 
 @api_bp.route("/logs", methods=["DELETE"])
@@ -160,42 +161,66 @@ def api_clear_logs():
     return jsonify({"deleted": deleted}), 200
 
 # Catch-all Mock Endpoint
-@api_bp.route("/<path:path>", methods=["GET","POST","PUT","DELETE","PATCH"])
+@api_bp.route("/<path:path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 def mock_all(path):
     full_path = "/" + path
-    method    = request.method
-    body      = request.get_data(as_text=True)
-    headers   = dict(request.headers)
-    query     = request.args.to_dict()
+    method = request.method
+    headers = dict(request.headers)
+    query = request.args.to_dict()
+    try:
+        body_json = request.get_json(force=True)
+    except:
+        body_json = {}
+    raw_body = request.get_data(as_text=True)
 
+    # 1. Find matching rule
     rule = find_matching_rule(method, full_path)
-    log_request({
-        "method":          method,
-        "path":            full_path,
-        "headers":         headers,
-        "query":           query,
-        "body":            body,
-        "matched_rule_id": rule.id if rule else None
-    })
-
     if not rule:
         abort(404, "No mock rule matched")
 
+    # 2. Apply delay if needed
     if rule.delay:
         time.sleep(rule.delay)
 
+    # 3. Build dynamic context for template engine
+    context = {
+        "body": body_json,
+        "query": query,
+        "headers": headers,
+        "path": full_path,
+        "method": method,
+        "raw_body": raw_body
+    }
+
+    # DB lookup support ( if needed )
+    if "{{db." in (rule.body_template.get("template") or ""):
+        from .models import User  # adjust if you have other models
+        # Simple example: try to fetch first user by username from body or query
+        username = body_json.get("username") or query.get("username")
+        if username:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                context["db"] = {c.name: getattr(user, c.name) for c in user.__table__.columns}
+
+    # 4. Render template with extended context
     tpl_str = rule.body_template.get("template")
     try:
-        content = render_handlebars(tpl_str, {
-            "request": {
-                "method": method,
-                "path": full_path,
-                "headers": headers,
-                "query": query,
-                "body": body
-            }
-        })
+        content = render_handlebars(tpl_str, context)
     except Exception as e:
         abort(500, f"Template error: {e}")
 
-    return Response(content, status=rule.status_code, headers=rule.headers)
+    # 5. Return response
+    resp = Response(content, status=rule.status_code, headers=rule.headers)
+
+    # 6. Log request
+    log_request({
+        "method": method,
+        "path": full_path,
+        "headers": headers,
+        "query": query,
+        "body": raw_body,
+        "matched_rule_id": rule.id,
+        "status_code": rule.status_code
+    })
+
+    return resp

@@ -200,6 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
            <td>${l.method}</td>
            <td>${l.path}</td>
            <td>${l.matched_rule_id || ""}</td>
+           <td>${l.status_code}</td>
          </tr>`
       ).join("");
     }

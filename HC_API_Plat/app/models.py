@@ -50,3 +50,4 @@ class LoggedRequest(db.Model):
                            db.Integer,
                            db.ForeignKey("rules.id", ondelete="SET NULL"),
                            nullable=True)
+    status_code = db.Column(db.Integer, nullable=False)

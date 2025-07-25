@@ -30,6 +30,17 @@ services:
       PYTHONPATH: /app
     depends_on:
       - db
+  test:
+      build: .
+      working_dir: /app
+      volumes:
+        - .:/app
+      environment:
+        FLASK_APP: run.py
+        DATABASE_URL: postgresql://fakeuser:fakepass@db:5432/hcfakeapi
+      depends_on:
+        - db
+      command: pytest tests --maxfail=0 --disable-warnings -v
 
 volumes:
   pgdata:

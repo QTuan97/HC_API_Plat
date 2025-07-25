@@ -108,7 +108,8 @@ def log_request(record: dict) -> LoggedRequest:
         headers=record["headers"],
         query_params=record.get("query", {}),
         body=record.get("body", ""),
-        matched_rule_id=record.get("matched_rule_id")
+        matched_rule_id=record.get("matched_rule_id"),
+        status_code=record.get("status_code")
     )
     db.session.add(log)
     db.session.commit()

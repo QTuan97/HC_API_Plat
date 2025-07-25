@@ -1,93 +1,248 @@
-# HC_API
+# HC API Platform
 
+A **Beeceptor-like API mocking and testing platform** built with **Flask** and **PostgreSQL**.  
+This platform lets you create projects, define mock rules (static or dynamic), and intercept API requests with custom responses.  
+Includes a simple web UI and JWT-based authentication.
 
+---
 
-## Getting started
+## 🚀 Features
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- **User Authentication (JWT)**: Secure registration and login.
+- **Project Management**: Organize rules under multiple projects.
+- **Dynamic Mock Rules**:
+  - Supports **path regex** (`^/api/users/(?P<username>[a-zA-Z0-9_]+)$`).
+  - Access request data with placeholders:
+    - `{{body.username}}` → Request body
+    - `{{query.page}}` → Query parameters
+    - `{{headers.Authorization}}` → Headers
+    - `{{username}}` → Path regex captured groups
+    - `{{db.password_hash}}` → Database lookups (auto-fetched by username)
+- **Request Logging**: Automatically logs requests and responses.
+- **Web UI**: Manage projects, rules, and view logs.
+- **Docker Support**: Ready-to-use `docker-compose.yml`.
+- **Testing Ready**: Includes pytest.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+---
 
-## Add your files
+## 🛠️ Tech Stack
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+- **Backend**: Flask, Flask-JWT-Extended, SQLAlchemy
+- **Database**: PostgreSQL
+- **Frontend**: HTML, CSS, JavaScript
+- **Templating**: Handlebars-like engine for dynamic placeholders
+- **Containerization**: Docker & Docker Compose
+
+---
+
+## 📦 Installation
+
+### 1. Clone & Enter Project
+
+```bash
+git clone <your_repo_url>
+cd HC_API_Plat
+```
+
+### 2. Setup Python Environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Environment Variables
+
+Edit **`.env`**:
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/qtuan971/hc_api.git
-git branch -M main
-git push -uf origin main
+FLASK_ENV=development
+DATABASE_URL=postgresql://fakeuser:fakepass@db:5432/fakeapi
+JWT_SECRET_KEY=your_secret_key
 ```
 
-## Integrate with your tools
+---
 
-- [ ] [Set up project integrations](https://gitlab.com/qtuan971/hc_api/-/settings/integrations)
+## ▶️ Running the Project
 
-## Collaborate with your team
+### **Option 1: Run Locally**
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+export FLASK_APP=run.py
+flask run
+```
 
-## Test and Deploy
+Server runs at: [http://localhost:5000](http://localhost:5000)
 
-Use the built-in continuous integration in GitLab.
+### **Option 2: Run with Docker**
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+docker-compose up --build
+```
 
-***
+- Flask API → `http://localhost:5000`  
+- PostgreSQL → `localhost:5432` (`fakeuser` / `fakepass` / `fakeapi`)
 
-# Editing this README
+---
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+## 🔑 Authentication
 
-## Suggestions for a good README
+### Register
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+`POST /api/auth/register`
 
-## Name
-Choose a self-explaining name for your project.
+```json
+{
+  "username": "duongtuan",
+  "password": "123123"
+}
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Login
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+`POST /api/auth/login`
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+```json
+{
+  "username": "duongtuan",
+  "password": "123123"
+}
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Returns:
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```json
+{
+  "access_token": "<JWT_TOKEN>"
+}
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Include JWT in all further API calls:
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```
+Authorization: Bearer <JWT_TOKEN>
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+---
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## 📂 Project Management
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+### Create Project
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+`POST /api/projects`
 
-## License
-For open source projects, say how it is licensed.
+```json
+{
+  "name": "My Test Project",
+  "base_url": "/api",
+  "description": "Testing API mock rules"
+}
+```
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+### List Projects
+
+`GET /api/projects`
+
+---
+
+## 🎭 Creating Mock Rules
+
+Rules belong to projects (`project_id` required).
+
+### Example Rule (Login)
+
+`POST /api/projects/<project_id>/rules`
+
+```json
+{
+  "method": "POST",
+  "path_regex": "^/api/login$",
+  "status_code": 200,
+  "headers": {"Content-Type": "application/json"},
+  "body_template": {
+    "template": "{\"message\": \"Welcome {{body.username}}\", \"page\": \"{{query.page}}\"}"
+  },
+  "enabled": true,
+  "delay": 0
+}
+```
+
+### Example Rule (Path + DB)
+
+```json
+{
+  "method": "GET",
+  "path_regex": "^/api/users/(?P<username>[a-zA-Z0-9_]+)$",
+  "status_code": 200,
+  "headers": {"Content-Type": "application/json"},
+  "body_template": {
+    "template": "{\"username\": \"{{username}}\", \"password\": \"{{db.password_hash}}\"}"
+  },
+  "enabled": true
+}
+```
+
+---
+
+## 🔄 Dynamic Placeholders
+
+| Placeholder Type | Example | Value Source |
+|-------------------|---------|--------------|
+| **Body** | `{{body.username}}` | JSON body field |
+| **Query** | `{{query.page}}` | URL query params |
+| **Headers** | `{{headers.Authorization}}` | Request headers |
+| **Path** | `{{username}}` | Named regex groups |
+| **Database** | `{{db.password_hash}}` | DB lookup (auto by username) |
+
+---
+
+## 🪵 Viewing Logs
+
+### List Logs
+
+`GET /api/logs`
+
+Returns:
+
+```json
+[
+  {
+    "method": "POST",
+    "path": "/api/login",
+    "status_code": 200,
+    "matched_rule_id": 1,
+    "body": "{\"username\": \"duongtuan\"}",
+    "query": {},
+    "timestamp": "2025-07-25T10:30:00"
+  }
+]
+```
+
+---
+
+## 🧪 Testing
+
+Run all tests:
+
+```bash
+pytest -v
+```
+
+---
+
+## 📸 Web UI
+
+- **/register** – Register new users  
+- **/projects** – Manage projects and rules  
+- **/logs** – View logs  
+
+---
+
+## 📜 License
+
+MIT License
+
+---
+
+**Author:** Duong Tuan
