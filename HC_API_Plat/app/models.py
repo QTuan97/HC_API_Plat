@@ -13,9 +13,8 @@ class User(db.Model):
 
 class Project(db.Model):
     __tablename__  = "projects"
-    id             = db.Column(db.Integer,   primary_key=True)
-    name           = db.Column(db.String,    nullable=False)
-    base_url       = db.Column(db.String,    nullable=False)
+    id             = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, unique=True, index=True, nullable=False)
     description    = db.Column(db.Text)
     created_at     = db.Column(db.DateTime,  default=datetime.utcnow)
     rules          = db.relationship("MockRule", back_populates="project")
@@ -45,9 +44,12 @@ class LoggedRequest(db.Model):
     path               = db.Column(db.String, nullable=False)
     headers            = db.Column(JSONB)
     query_params       = db.Column(JSONB)
-    body               = db.Column(db.Text)
+    body               = db.Column(JSONB, nullable=True)
+    raw_body           = db.Column(db.Text, nullable=True)
     matched_rule_id    = db.Column(
                            db.Integer,
                            db.ForeignKey("rules.id", ondelete="SET NULL"),
                            nullable=True)
     status_code = db.Column(db.Integer, nullable=False)
+    response_status = db.Column(db.Integer, nullable=True)
+    response_body = db.Column(db.Text, nullable=True)

@@ -1,20 +1,38 @@
 {% extends "layout.html" %}
 {% block content %}
-  <h2>Request Logs</h2>
-  <div class="mb-3">
-    <button id="clear-logs" class="btn btn-warning">Clear Logs</button>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <button id="clear-logs" class="btn btn-outline-warning">
+    <i class="bi bi-trash"></i> Clear Logs
+  </button>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="live-toggle" checked>
+    <label class="form-check-label" for="live-toggle">Live View</label>
   </div>
-  <table id="logs-table" class="table table-striped">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Time</th>
-        <th>Method</th>
-        <th>Path</th>
-        <th>Matched Rule</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+</div>
+
+<div class="card shadow-sm rounded-3">
+  <div class="table-responsive">
+    <table id="logs-table" class="table table-hover table-striped mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>No.</th>
+          <th>Time</th>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <button class="btn btn-outline-secondary" id="prev-page">← Prev</button>
+  <span id="pagination-info" class="text-muted small"></span>
+  <button class="btn btn-outline-secondary" id="next-page">Next →</button>
+</div>
+
+<script src="{{ url_for('static', filename='js/logs.js') }}"></script>
 {% endblock %}

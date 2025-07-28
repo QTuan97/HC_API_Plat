@@ -5,6 +5,7 @@ from .db import db
 from .models import User, MockRule, LoggedRequest
 from .routes_ui import ui_bp
 from .routes_api import api_bp
+from .routes_mock import mock_bp
 
 def create_app():
     app = Flask(
@@ -27,6 +28,7 @@ def create_app():
     # Register your UI & API blueprints
     app.register_blueprint(ui_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(mock_bp)
 
     # **Create tables once models are loaded**
     with app.app_context():

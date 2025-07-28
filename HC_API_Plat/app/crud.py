@@ -1,4 +1,4 @@
-import re
+import re, json
 from typing import Optional, List
 from werkzeug.security import generate_password_hash, check_password_hash
 from .db import db
@@ -40,7 +40,6 @@ def update_project(project_id: int, data: dict) -> Optional[Project]:
     if not proj:
         return None
     proj.name        = data.get("name", proj.name)
-    proj.base_url    = data.get("base_url", proj.base_url)
     proj.description = data.get("description", proj.description)
     db.session.commit()
     return proj
@@ -63,10 +62,10 @@ def create_rule(data: dict) -> MockRule:
 def list_rules() -> List[MockRule]:
     return MockRule.query.order_by(MockRule.id.desc()).all()
 
-def find_matching_rule(method: str, path: str) -> Optional[MockRule]:
-    # only match enabled rules
-    for rule in MockRule.query.filter_by(method=method, enabled=True).all():
-        if re.match(rule.path_regex, path):
+def find_matching_rule(method, path, project_id):
+    rules = MockRule.query.filter_by(method=method.upper(), project_id=project_id, enabled=True).all()
+    for rule in rules:
+        if re.fullmatch(rule.path_regex, path):
             return rule
     return None
 
@@ -101,18 +100,44 @@ def toggle_rule(rule_id: int) -> Optional[MockRule]:
     return rule
 
 # Logs CRUD
+def parse_body(raw_body: str, headers: dict):
+    ctype = headers.get("Content-Type", "")
+    if "application/json" in ctype:
+        try:
+            return json.loads(raw_body)
+        except:
+            return raw_body
+    elif "application/x-www-form-urlencoded" in ctype:
+        from urllib.parse import parse_qs
+        return parse_qs(raw_body)
+    return raw_body
+
 def log_request(record: dict) -> LoggedRequest:
+    headers = record.get("headers", {})
+    raw_body = record.get("body", "")
+
     log = LoggedRequest(
-        method=record["method"],
-        path=record["path"],
-        headers=record["headers"],
-        query_params=record.get("query", {}),
-        body=record.get("body", ""),
+        method=record.get("method"),
+        path=record.get("path"),
+        headers=headers,
+        query_params=record.get("query"),
+        body=parse_body(raw_body, headers),
+        raw_body=raw_body,
+        response_status=record.get("status_code"),
+        response_body=record.get("response_body"),
         matched_rule_id=record.get("matched_rule_id"),
         status_code=record.get("status_code")
     )
     db.session.add(log)
     db.session.commit()
+
+    # Set the limit 1000 logs in database
+    excess = LoggedRequest.query.order_by(LoggedRequest.id.desc()).offset(1000).all()
+    if excess:
+        for old in excess:
+            db.session.delete(old)
+        db.session.commit()
+
     return log
 
 def list_logs(limit: int = 100) -> List[LoggedRequest]:

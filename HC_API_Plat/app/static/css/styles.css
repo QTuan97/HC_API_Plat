@@ -57,3 +57,37 @@ textarea.form-control {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
+
+.details-section {
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Logs page formatting */
+pre {
+  background-color: #f8f9fa;
+  padding: 12px;
+  font-size: 0.85rem;
+  font-family: monospace;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+#logs-table td,
+#logs-table th {
+  vertical-align: middle;
+}
+#logs-table .btn {
+  padding: 2px 8px;
+  font-size: 0.8rem;
+}

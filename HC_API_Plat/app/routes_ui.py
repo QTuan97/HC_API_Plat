@@ -8,6 +8,7 @@ from .crud import create_user, get_user_by_username, verify_user, get_project
 ui_bp = Blueprint("ui", __name__)
 # UI Routes
 
+# Login and Register Pages
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -49,22 +50,27 @@ def logout():
     session.clear()
     return redirect(url_for("ui.index"))
 
+# Index Pages
 @ui_bp.route("/")
 def index():
     return render_template("index.html")
 
-@ui_bp.route("/projects")
+# Project pages
+@ui_bp.route("/ui/projects")
 @login_required
 def projects_page():
     return render_template("projects.html")
 
-@ui_bp.route("/projects/<int:pid>/rules")
+@ui_bp.route("/ui/projects/<int:pid>/rules")
 @login_required
 def project_rules_page(pid):
     proj = get_project(pid) or abort(404)
     return render_template("rules.html", project=proj)
 
+# Logs Pages
 @ui_bp.route("/logs")
 @login_required
 def logs_page():
-    return render_template("logs.html")
+    from .models import LoggedRequest
+    logs = LoggedRequest.query.order_by(LoggedRequest.timestamp.desc()).limit(200).all()
+    return render_template("logs.html", logs=logs)
