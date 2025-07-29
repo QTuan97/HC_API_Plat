@@ -175,15 +175,6 @@ GET http://localhost:5000/<normalized_name>/<endpoint>
 
 ---
 
-## ✅ Testing
-
-Run the full test suite with pytest:
-```bash
-pytest --maxfail=1 --disable-warnings -q
-```
-
----
-
 ## 🚀 Deployment
 
 - **Docker Compose**: as above.
