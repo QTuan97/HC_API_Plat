@@ -34,13 +34,11 @@
 
         <div class="col-md-6">
           <label class="form-label">Response headers (JSON)</label>
-          <textarea class="form-control" name="headers" rows="3"
-            placeholder='{"Content-Type":"application/json"}'></textarea>
+            <textarea name="headers" class="form-control" rows="3">{ "Content-Type": "application/json" }</textarea>
         </div>
         <div class="col-md-6">
           <label class="form-label">Response body template</label>
-          <textarea class="form-control" name="body_template" rows="3" required
-            placeholder='{"template":"{\"foo\":\"{{request.body}}\"}"}'></textarea>
+          <textarea class="form-control" name="body_template" rows="3" required>{}</textarea>
         </div>
       </form>
     </div>
