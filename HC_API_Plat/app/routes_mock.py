@@ -3,13 +3,14 @@ import time
 from .models import Project
 from .crud import find_matching_rule, log_request
 from .template_engine import render_handlebars
+from .utils import normalize_project_name
 
-mock_bp = Blueprint("mock", __name__)  # 🚫 no prefix
+mock_bp = Blueprint("mock", __name__)
 
 @mock_bp.route("/<project_name>/", defaults={"mock_path": ""}, methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 @mock_bp.route("/<project_name>/<path:mock_path>", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 def dynamic_mock(project_name, mock_path):
-    project_name = project_name.lower()
+    project_name = normalize_project_name(project_name)
     project = Project.query.filter_by(name=project_name).first()
     if not project:
         abort(404, "Project not found")
