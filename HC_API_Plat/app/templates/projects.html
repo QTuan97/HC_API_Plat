@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h1 class="mb-4">Projects</h1>
+
+<form id="project-form" class="row g-2 mb-4">
+  <div class="col-md-5">
+    <input type="text" name="name" class="form-control" placeholder="Project Name" required>
+    <div class="invalid-feedback d-block" id="project-error" style="display:none;"></div>
+  </div>
+  <div class="col-md-5">
+    <input type="text" name="description" class="form-control" placeholder="Description (optional)">
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-primary w-100">Create</button>
+  </div>
+</form>
+
+<div id="projects-container" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4"></div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editProjectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form id="edit-project-form" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Project</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input name="name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <input name="description" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/projects.js') }}"></script>
+{% endblock %}

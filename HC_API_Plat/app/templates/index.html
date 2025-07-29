@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="text-center mt-5">
+  <h1>Welcome to Flask Mockceptor</h1>
+  {% if not session.get('user_id') %}
+    <p>Please <a href="{{ url_for('ui.login') }}">login</a> or <a href="{{ url_for('ui.register') }}">register</a> to continue.</p>
+  {% endif %}
+</div>
+{% endblock %}
