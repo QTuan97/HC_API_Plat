@@ -3,6 +3,7 @@ from typing import Optional, List
 from werkzeug.security import generate_password_hash, check_password_hash
 from .db import db
 from .models import User, Project, MockRule, LoggedRequest
+from .utils import normalize_project_name
 
 # User CRUD
 def create_user(username: str, password: str) -> User:
@@ -24,7 +25,10 @@ def verify_user(username: str, password: str) -> Optional[User]:
 
 # Project CRUD
 def create_project(data: dict) -> Project:
-    proj = Project(**data)
+    raw_name = data.get("name", "")
+    normalized_name = normalize_project_name(raw_name)
+    payload = {**data, "name": normalized_name}
+    proj = Project(**payload)
     db.session.add(proj)
     db.session.commit()
     return proj

@@ -3,6 +3,8 @@ from email.policy import default
 from .db import db
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import validates
+from .utils import normalize_project_name
 
 class User(db.Model):
     __tablename__ = "users"
@@ -14,10 +16,14 @@ class User(db.Model):
 class Project(db.Model):
     __tablename__  = "projects"
     id             = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, unique=True, index=True, nullable=False)
+    name = db.Column(db.String, unique=True, nullable=False)
     description    = db.Column(db.Text)
     created_at     = db.Column(db.DateTime,  default=datetime.utcnow)
     rules          = db.relationship("MockRule", back_populates="project")
+
+    @validates('name')
+    def _normalize_name(self, key, value):
+        return normalize_project_name(value)
 
 class MockRule(db.Model):
     __tablename__   = "rules"
