@@ -1,0 +1,7 @@
+{% extends "layout.html" %}
+{% block content %}
+  {% include "rules/_rule_form.html" %}
+
+  <script>window.PROJECT_ID = {{ project.id }};</script>
+  <script src="{{ url_for('static', filename='js/rule_form.js') }}"></script>
+{% endblock %}

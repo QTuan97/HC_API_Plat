@@ -1,7 +1,7 @@
 from functools import wraps
 from flask import (
     Blueprint, render_template, request,
-    session, redirect, url_for, flash
+    session, redirect, url_for, flash, abort
 )
 from .crud import create_user, get_user_by_username, verify_user, get_project
 
@@ -55,17 +55,25 @@ def logout():
 def index():
     return render_template("index.html")
 
-# Project pages
+# Project Pages
 @ui_bp.route("/ui/projects")
 @login_required
 def projects_page():
     return render_template("projects.html")
 
+# Rules Pages
 @ui_bp.route("/ui/projects/<int:pid>/rules")
+@ui_bp.route("/projects/<int:pid>/rules")
 @login_required
-def project_rules_page(pid):
-    proj = get_project(pid) or abort(404)
-    return render_template("rules.html", project=proj)
+def show_rules_list(pid):
+    project = get_project(pid) or abort(404, "Project not found")
+    return render_template("rules/list.html", project=project)
+
+@ui_bp.route("/projects/<int:pid>/rules/new")
+@login_required
+def show_rules_create(pid):
+    project = get_project(pid) or abort(404, "Project not found")
+    return render_template("rules/create.html", project=project)
 
 # Logs Pages
 @ui_bp.route("/logs")

@@ -28,19 +28,24 @@ class Project(db.Model):
 class MockRule(db.Model):
     __tablename__   = "rules"
     id              = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(
-                           db.Integer,
-                              db.ForeignKey("projects.id", ondelete="CASCADE"),
-                              nullable = False)
-    project = db.relationship("Project", back_populates="rules")
-    method          = db.Column(db.String, nullable=False)
-    path_regex      = db.Column(db.String, nullable=False)
-    status_code     = db.Column(db.Integer, default=200)
+    project_id      = db.Column(db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project         = db.relationship("Project", back_populates="rules")
+
+    method          = db.Column(db.String,  nullable=False)
+    path_regex      = db.Column(db.String,  nullable=False)
+
+    # existing JSONB
     headers         = db.Column(JSONB, default={})
     body_template   = db.Column(JSONB, default={})
-    delay = db.Column(db.Integer, default=0)
-    enabled = db.Column(db.Boolean, default=True)
-    created_at      = db.Column(db.DateTime, default=datetime.now())
+
+    delay           = db.Column(db.Integer, default=0)
+    status_code     = db.Column(db.Integer, default=200)
+    enabled         = db.Column(db.Boolean, default=True)
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def response_type(self):
+        return "weighted" if isinstance(self.body_template, list) else "single"
 
 class LoggedRequest(db.Model):
     __tablename__      = "logs"

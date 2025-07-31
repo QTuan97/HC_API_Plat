@@ -16,10 +16,10 @@ def dynamic_mock(project_name, mock_path):
         abort(404, "Project not found")
 
     full_path = "/" + mock_path
-    method = request.method
-    headers = dict(request.headers)
-    query = request.args.to_dict()
-    raw_body = request.get_data(as_text=True)
+    method    = request.method
+    headers   = dict(request.headers)
+    query     = request.args.to_dict()
+    raw_body  = request.get_data(as_text=True)
     try:
         body_json = request.get_json(force=True)
     except:
@@ -29,34 +29,58 @@ def dynamic_mock(project_name, mock_path):
     if not rule:
         abort(404, "No matching rule")
 
-    if rule.delay:
+    # Delay if single mode or per-entry
+    # (for weighted entries, delay is taken per choice below)
+    if not isinstance(rule.body_template, list) and rule.delay:
         time.sleep(rule.delay)
 
     context = {
-        "body": body_json,
-        "query": query,
-        "headers": headers,
-        "path": full_path,
-        "method": method,
-        "raw_body": raw_body,
+        "body":      body_json,
+        "query":     query,
+        "headers":   headers,
+        "path":      full_path,
+        "method":    method,
+        "raw_body":  raw_body,
     }
 
+    bt = rule.body_template
+    if isinstance(bt, list):
+        # Weighted‐response: pick one entry by weight
+        import random
+        choice = random.choices(
+            bt,
+            weights=[e.get("weight", 0) for e in bt],
+            k=1
+        )[0]
+        tpl_str     = choice.get("template", "")
+        status_code = choice.get("status_code", rule.status_code)
+        headers_out = choice.get("headers", rule.headers)
+        delay_secs  = choice.get("delay", rule.delay)
+    else:
+        # Single‐response
+        tpl_str     = bt.get("template", "")
+        status_code = rule.status_code
+        headers_out = rule.headers
+        delay_secs  = rule.delay
+
+    if delay_secs:
+        time.sleep(delay_secs)
+
     try:
-        tpl_str = rule.body_template.get("template")
         content = render_handlebars(tpl_str, context)
     except Exception as e:
         abort(500, f"Template error: {e}")
 
-    resp = Response(content, status=rule.status_code, headers=rule.headers)
+    resp = Response(content, status=status_code, headers=headers_out)
 
     log_request({
-        "method": method,
-        "path": full_path,
-        "headers": headers,
-        "query": query,
-        "body": raw_body,
+        "method":        method,
+        "path":          full_path,
+        "headers":       headers,
+        "query":         query,
+        "body":          raw_body,
         "matched_rule_id": rule.id,
-        "status_code": rule.status_code,
+        "status_code":   resp.status_code,
         "response_body": content
     })
 
