@@ -94,6 +94,8 @@ def api_rules(pid):
     if request.method == "POST":
         raw = request.get_json(force=True)
 
+        if "path_regex" in raw:
+            raw["path_regex"] = raw["path_regex"].replace("\\\\", "\\")
         # extract and remove response_type so we don't set it on the model
         resp_type = raw.pop("response_type", "single")
 
@@ -145,6 +147,15 @@ def api_rules(pid):
                 "headers":     raw.get("headers", {}),
                 "template":    raw.get("body_template", {}).get("template", "")
             }
+
+        # check unique
+        existing = MockRule.query.filter_by(
+            project_id=pid,
+            method=raw.get("method"),
+            path_regex=raw.get("path_regex")
+        ).first()
+        if existing:
+            abort(400, "A rule for that method + path already exists")
 
         # create and return
         rule = create_rule(raw)

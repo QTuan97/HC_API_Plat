@@ -1,6 +1,7 @@
 import re, json
 from typing import Optional, List
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask import current_app
 from .db import db
 from .models import User, Project, MockRule, LoggedRequest
 from .utils import normalize_project_name
@@ -66,11 +67,27 @@ def create_rule(data: dict) -> MockRule:
 def list_rules() -> List[MockRule]:
     return MockRule.query.order_by(MockRule.id.desc()).all()
 
-def find_matching_rule(method, path, project_id):
-    rules = MockRule.query.filter_by(method=method.upper(), project_id=project_id, enabled=True).all()
+def find_matching_rule(method: str, path: str, project_id: int):
+    rules = MockRule.query.filter_by(
+        project_id=project_id, enabled=True
+    ).order_by(MockRule.created_at.asc()).all()
+
     for rule in rules:
-        if re.fullmatch(rule.path_regex, path):
+        if rule.method.upper() != method.upper():
+            continue
+
+        try:
+            pattern = re.compile(rule.path_regex)
+        except re.error:
+            current_app.logger.warning(
+                "Invalid regex in rule %s: %r",
+                rule.id, rule.path_regex
+            )
+            continue
+
+        if pattern.fullmatch(path):
             return rule
+
     return None
 
 def update_rule(rule_id: int, data: dict) -> Optional[MockRule]:

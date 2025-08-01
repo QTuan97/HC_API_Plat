@@ -1,4 +1,4 @@
-import os
+import os, logging
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from .db import db
@@ -13,6 +13,15 @@ def create_app():
         static_folder="static",
         template_folder="templates"
     )
+    # logs
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter(
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+    )
+    handler.setFormatter(formatter)
+    app.logger.addHandler(handler)
+    app.logger.setLevel(logging.INFO)
     # Core config
     app.config.update({
         "SQLALCHEMY_DATABASE_URI": os.environ["DATABASE_URL"],

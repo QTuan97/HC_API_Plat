@@ -1,5 +1,3 @@
-// static/js/rule_form.js
-
 (async function(){
   // — fetchJSON helper —
   async function fetchJSON(url, opts) {
@@ -9,6 +7,45 @@
       throw new Error(text || res.statusText);
     }
     return res.json();
+  }
+
+  // — simple toast notifier —
+  function showToast(message, type="danger") {
+  // Create container if needed
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    document.body.appendChild(container);
+  }
+
+  // Build the toast element
+  const toastEl = document.createElement("div");
+  toastEl.className = "toast";
+  toastEl.setAttribute("role", "alert");
+  toastEl.setAttribute("aria-live", "assertive");
+  toastEl.setAttribute("aria-atomic", "true");
+  toastEl.innerHTML = `
+    <div class="toast-header">
+      <!-- You can switch icons based on 'type' if you like -->
+      <strong class="me-auto">${type === "danger" ? "Error" : "Notice"}</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body">
+      ${message}
+    </div>
+  `;
+
+  container.appendChild(toastEl);
+
+  // Initialize & show
+  const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
+  bsToast.show();
+
+  // Clean up from the DOM after hide
+  toastEl.addEventListener('hidden.bs.toast', () => {
+    toastEl.remove();
+  });
   }
 
   // — grab DOM refs —
@@ -22,7 +59,7 @@
 
   if (!form || !PROJECT_ID) return;
 
-  // — Toggle logic (bound once) —
+  // — Toggle logic —
   function updateSection() {
     document.getElementById("single-section").style.display   =
       singleRadio.checked   ? "" : "none";
@@ -32,7 +69,7 @@
   singleRadio.addEventListener("change", updateSection);
   weightedRadio.addEventListener("change", updateSection);
 
-  // — Weighted entries (onclick ensures single handler) —
+  // — Weighted entries management —
   function updateAddButton() {
     addBtn.style.display = container.children.length >= 4 ? "none" : "";
   }
@@ -52,10 +89,9 @@
     updateAddButton();
   });
 
-  // — Form submit (guarded so bound only once) —
+  // — Form submission (single bound) —
   if (!form._ruleFormBound) {
     form._ruleFormBound = true;
-
     form.addEventListener("submit", async e => {
       e.preventDefault();
 
@@ -65,7 +101,7 @@
           .map(i=>parseInt(i.value,10)||0)
           .reduce((a,b)=>a+b,0);
         if (total !== 100) {
-          return alert(`Total weight must equal 100% (got ${total}%)`);
+          return showToast(`Total weight must equal 100% (got ${total}%)`);
         }
       }
 
@@ -93,6 +129,7 @@
         payload.body_template = { template: fd.get("body_template") };
       }
 
+      // send to API
       try {
         await fetchJSON(`/api/projects/${PROJECT_ID}/rules`, {
           method:  "POST",
@@ -101,12 +138,12 @@
         });
         window.location.href = `/projects/${PROJECT_ID}/rules`;
       } catch (err) {
-        alert("Create failed: " + err.message);
+        showToast(err.message);
       }
     });
   }
 
-  // initialize UI
+  // initialize
   updateSection();
   updateAddButton();
 })();
