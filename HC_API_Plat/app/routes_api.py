@@ -1,4 +1,4 @@
-import time
+import time, json
 from flask import Blueprint, request, jsonify, abort, Response
 from flask_jwt_extended import create_access_token, jwt_required
 from .crud import (
@@ -96,10 +96,9 @@ def api_rules(pid):
 
         if "path_regex" in raw:
             raw["path_regex"] = raw["path_regex"].replace("\\\\", "\\")
-        # extract and remove response_type so we don't set it on the model
+
         resp_type = raw.pop("response_type", "single")
 
-        # always record the project_id
         raw["project_id"] = pid
 
         # --- normalize single vs weighted into raw["body_template"] ---
@@ -140,7 +139,6 @@ def api_rules(pid):
             raw["headers"]     = {}
         else:
             # single response mode
-            # expect raw["delay"], raw["status_code"], raw["headers"], raw["body_template"]["template"]
             raw["body_template"] = {
                 "delay":       raw.get("delay", 0),
                 "status_code": raw.get("status_code", 200),
@@ -152,10 +150,11 @@ def api_rules(pid):
         existing = MockRule.query.filter_by(
             project_id=pid,
             method=raw.get("method"),
-            path_regex=raw.get("path_regex")
+            path_regex=raw.get("path_regex"),
+            request_body=raw.get("request_body")
         ).first()
         if existing:
-            abort(400, "A rule for that method + path already exists")
+            abort(400, "A rule for that method + path + request body already exists")
 
         # create and return
         rule = create_rule(raw)
@@ -177,6 +176,7 @@ def api_rules(pid):
         "project_id":    r.project_id,
         "method":        r.method,
         "path_regex":    r.path_regex,
+        "request_body":  r.request_body,
         "status_code":   r.status_code,
         "headers":       r.headers,
         "body_template": r.body_template,
@@ -188,11 +188,22 @@ def api_rules(pid):
 @api_bp.route("/projects/<int:pid>/rules/<int:rule_id>", methods=["PUT"])
 def api_update_rule(pid, rule_id):
     get_project(pid) or abort(404, "Project not found")
-
     raw = request.get_json(force=True)
+
+    if "request_body" in raw:
+        rb = raw["request_body"]
+        if isinstance(rb, str):
+            try:
+                raw["request_body"] = json.loads(rb)
+            except ValueError:
+                abort(400, "Invalid JSON for request_body")
+        elif isinstance(rb, dict):
+            raw["request_body"] = rb
+        else:
+            abort(400, "request_body must be a JSON object or stringified JSON")
+
     resp_type = raw.pop("response_type", "single")
 
-    # normalize exactly as in POST
     if resp_type == "weighted":
         bt = raw.get("body_template")
         if isinstance(bt, str):
@@ -203,27 +214,18 @@ def api_update_rule(pid, rule_id):
         elif isinstance(bt, list):
             entries = bt
         else:
-            abort(400, "body_template must be a JSON array for weighted responses")
+            abort(400, "body_template must be an array for weighted responses")
 
-        total = 0
-        for e in entries:
-            if not isinstance(e, dict):
-                abort(400, "Each weighted entry must be an object")
-            w = e.get("weight")
-            if w is None:
-                abort(400, "Each weighted entry requires a weight")
-            try:
-                total += int(w)
-            except (TypeError, ValueError):
-                abort(400, "Weight must be an integer")
+        total = sum(int(e.get("weight", 0)) for e in entries if isinstance(e, dict))
         if total != 100:
             abort(400, f"Total weight must equal 100% (got {total}%)")
 
         raw["body_template"] = entries
-        raw["delay"]       = 0
-        raw["status_code"] = 200
-        raw["headers"]     = {}
+        raw["delay"]        = 0
+        raw["status_code"]  = 200
+        raw["headers"]      = {}
     else:
+        # single response
         raw["body_template"] = {
             "delay":       raw.get("delay", 0),
             "status_code": raw.get("status_code", 200),
@@ -240,6 +242,7 @@ def api_update_rule(pid, rule_id):
         "project_id":    rule.project_id,
         "method":        rule.method,
         "path_regex":    rule.path_regex,
+        "request_body":  rule.request_body,
         "response_type": resp_type,
         "body_template": rule.body_template,
         "enabled":       rule.enabled,

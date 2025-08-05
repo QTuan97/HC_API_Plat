@@ -30,7 +30,6 @@ def dynamic_mock(project_name, mock_path):
         abort(404, "No matching rule")
 
     # Delay if single mode or per-entry
-    # (for weighted entries, delay is taken per choice below)
     if not isinstance(rule.body_template, list) and rule.delay:
         time.sleep(rule.delay)
 
@@ -45,7 +44,6 @@ def dynamic_mock(project_name, mock_path):
 
     bt = rule.body_template
     if isinstance(bt, list):
-        # Weighted‐response: pick one entry by weight
         import random
         choice = random.choices(
             bt,
@@ -55,16 +53,12 @@ def dynamic_mock(project_name, mock_path):
         tpl_str     = choice.get("template", "")
         status_code = choice.get("status_code", rule.status_code)
         headers_out = choice.get("headers", rule.headers)
-        delay_secs  = choice.get("delay", rule.delay)
     else:
         # Single‐response
         tpl_str     = bt.get("template", "")
         status_code = rule.status_code
         headers_out = rule.headers
-        delay_secs  = rule.delay
 
-    if delay_secs:
-        time.sleep(delay_secs)
 
     try:
         content = render_handlebars(tpl_str, context)

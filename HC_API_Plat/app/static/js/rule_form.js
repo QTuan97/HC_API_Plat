@@ -11,55 +11,59 @@
 
   // — simple toast notifier —
   function showToast(message, type="danger") {
-  // Create container if needed
-  let container = document.getElementById("toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "toast-container";
-    document.body.appendChild(container);
-  }
-
-  // Build the toast element
-  const toastEl = document.createElement("div");
-  toastEl.className = "toast";
-  toastEl.setAttribute("role", "alert");
-  toastEl.setAttribute("aria-live", "assertive");
-  toastEl.setAttribute("aria-atomic", "true");
-  toastEl.innerHTML = `
-    <div class="toast-header">
-      <!-- You can switch icons based on 'type' if you like -->
-      <strong class="me-auto">${type === "danger" ? "Error" : "Notice"}</strong>
-      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-    <div class="toast-body">
-      ${message}
-    </div>
-  `;
-
-  container.appendChild(toastEl);
-
-  // Initialize & show
-  const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
-  bsToast.show();
-
-  // Clean up from the DOM after hide
-  toastEl.addEventListener('hidden.bs.toast', () => {
-    toastEl.remove();
-  });
+    let container = document.getElementById("toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "toast-container";
+      document.body.appendChild(container);
+    }
+    const toastEl = document.createElement("div");
+    toastEl.className = "toast";
+    toastEl.setAttribute("role","alert");
+    toastEl.setAttribute("aria-live","assertive");
+    toastEl.setAttribute("aria-atomic","true");
+    toastEl.innerHTML = `
+      <div class="toast-header">
+        <strong class="me-auto">${type==="danger" ? "Error" : "Notice"}</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+      </div>
+      <div class="toast-body">
+        ${message}
+      </div>
+    `;
+    container.appendChild(toastEl);
+    const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    bsToast.show();
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
   }
 
   // — grab DOM refs —
-  const PROJECT_ID    = window.PROJECT_ID;
-  const form          = document.getElementById("rule-form");
-  const singleRadio   = document.getElementById("resp-single");
-  const weightedRadio = document.getElementById("resp-weighted");
-  const addBtn        = document.getElementById("add-weighted");
-  const container     = document.getElementById("weighted-container");
-  const template      = document.getElementById("weighted-template").content;
+  const PROJECT_ID       = window.PROJECT_ID;
+  const form             = document.getElementById("rule-form");
+  const singleRadio      = document.getElementById("resp-single");
+  const weightedRadio    = document.getElementById("resp-weighted");
+  const addBtn           = document.getElementById("add-weighted");
+  const container        = document.getElementById("weighted-container");
+  const template         = document.getElementById("weighted-template").content;
+  const methodSelect     = form.querySelector('select[name="method"]');
+  const requestBodyGroup = document.querySelector('.request-body-group');
 
   if (!form || !PROJECT_ID) return;
 
-  // — Toggle logic —
+  // — Show/hide the request-body textarea based on method —
+  function updateRequestBodyVisibility() {
+    const m = methodSelect.value.toUpperCase();
+    if (m === "POST" || m === "PUT" || m === "PATCH") {
+      requestBodyGroup.classList.remove("d-none");
+    } else {
+      requestBodyGroup.classList.add("d-none");
+      requestBodyGroup.querySelector('textarea').value = "";
+    }
+  }
+
+  methodSelect.addEventListener("change", updateRequestBodyVisibility);
+
+  // — Toggle logic for response type —
   function updateSection() {
     document.getElementById("single-section").style.display   =
       singleRadio.checked   ? "" : "none";
@@ -89,7 +93,7 @@
     updateAddButton();
   });
 
-  // — Form submission (single bound) —
+  // — Form submission —
   if (!form._ruleFormBound) {
     form._ruleFormBound = true;
     form.addEventListener("submit", async e => {
@@ -111,6 +115,14 @@
         method:     fd.get("method"),
         path_regex: fd.get("path_regex")
       };
+
+      // include request_body if visible
+      if (!requestBodyGroup.classList.contains("d-none")) {
+       const rb = fd.get("request_body").trim();
+        if (rb) {
+          payload.request_body = rb;
+        }
+      }
 
       if (weightedRadio.checked) {
         payload.response_type = "weighted";
@@ -143,7 +155,7 @@
     });
   }
 
-  // initialize
   updateSection();
   updateAddButton();
+  updateRequestBodyVisibility();
 })();

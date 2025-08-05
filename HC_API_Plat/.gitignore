@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# IDEs and editors
+.idea/
+*.iml
+.vscode/
+*.sublime-*
+*.code-workspace

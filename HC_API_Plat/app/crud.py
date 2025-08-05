@@ -1,7 +1,7 @@
 import re, json
 from typing import Optional, List
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import current_app
+from flask import current_app, request
 from .db import db
 from .models import User, Project, MockRule, LoggedRequest
 from .utils import normalize_project_name
@@ -68,25 +68,44 @@ def list_rules() -> List[MockRule]:
     return MockRule.query.order_by(MockRule.id.desc()).all()
 
 def find_matching_rule(method: str, path: str, project_id: int):
-    rules = MockRule.query.filter_by(
-        project_id=project_id, enabled=True
-    ).order_by(MockRule.created_at.asc()).all()
+    raw_text = request.get_data(as_text=True)
+    raw_json = request.get_json(force=False, silent=True)
 
-    for rule in rules:
-        if rule.method.upper() != method.upper():
+    if not raw_json:
+        raw_json = None
+
+    method = method.upper()
+    rules = (
+        MockRule.query
+        .filter_by(project_id=project_id, enabled=True)
+        .order_by(MockRule.created_at.asc())
+        .all()
+    )
+
+    for r in rules:
+        if r.method.upper() != method:
             continue
 
         try:
-            pattern = re.compile(rule.path_regex)
+            pat = re.compile(r.path_regex)
         except re.error:
-            current_app.logger.warning(
-                "Invalid regex in rule %s: %r",
-                rule.id, rule.path_regex
-            )
+            continue
+        if not pat.fullmatch(path):
             continue
 
-        if pattern.fullmatch(path):
-            return rule
+        if r.request_body is not None:
+            if isinstance(r.request_body, dict):
+                if not isinstance(raw_json, dict) or raw_json != r.request_body:
+                    continue
+
+            elif isinstance(r.request_body, str):
+                if raw_text.strip() != r.request_body.strip():
+                    continue
+
+            else:
+                continue
+
+        return r
 
     return None
 
@@ -96,6 +115,7 @@ def update_rule(rule_id: int, data: dict) -> Optional[MockRule]:
         return None
     rule.method        = data.get("method", rule.method)
     rule.path_regex    = data.get("path_regex", rule.path_regex)
+    rule.request_body  = data.get("request_body", rule.request_body)
     rule.status_code   = data.get("status_code", rule.status_code)
     rule.headers       = data.get("headers", rule.headers)
     rule.body_template = data.get("body_template", rule.body_template)

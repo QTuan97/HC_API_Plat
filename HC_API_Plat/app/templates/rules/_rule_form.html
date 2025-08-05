@@ -31,6 +31,13 @@
         <input type="text" class="form-control" name="path_regex" placeholder="^/foo$" required>
       </div>
 
+      <!-- REQUEST BODY -->
+      <div class="col-12 col-md-6 request-body-group d-none">
+      <label class="form-label">Request Body (JSON)</label>
+      <textarea name="request_body" class="form-control" rows="3"
+                placeholder='{"foo":"bar"}'></textarea>
+      </div>
+
       <!-- RESPONSE TYPE -->
       <div class="col-12">
         <label class="form-label">Response Type</label>
@@ -78,6 +85,9 @@
       <!-- SUBMIT BUTTON -->
       <div class="col-12 text-end">
         <button type="submit" class="btn btn-success">Save Rule</button>
+        <a href="{{ url_for('ui.show_rules_list', pid=project.id) }}" class="btn btn-success" role="button">
+         Back to list
+       </a>
       </div>
     </form>
   </div>

@@ -31,13 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${new Date(log.timestamp).toLocaleString()}</td>
           <td>${log.method}</td>
           <td>${log.path}</td>
+          <td>${log.matched_rule_id}</td>
           <td><span class="badge ${statusClass}">${status}</span></td>
           <td>
             <button class="btn btn-outline-primary btn-sm" onclick="toggleDetails(${log.id})">View Details</button>
           </td>
         </tr>
         <tr id="details-${log.id}" style="display:none;">
-          <td colspan="6">
+          <td colspan="7">
             <strong>Headers:</strong>
             <pre>${JSON.stringify(log.headers, null, 2)}</pre>
             <strong>Query:</strong>
@@ -105,7 +106,9 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchLogs();
   });
 
-  setInterval(fetchLogs, 3000);
+  setInterval(() => {
+    if (liveMode) fetchLogs();
+  }, 3000);
   fetchLogs();
 });
 
