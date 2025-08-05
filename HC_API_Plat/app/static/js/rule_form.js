@@ -37,7 +37,35 @@
     toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
   }
 
-  // — grab DOM refs —
+  function validateHeaders(jsonStr) {
+      let parsed;
+      try {
+        parsed = JSON.parse(jsonStr || "{}");
+      } catch {
+        throw new Error("Invalid JSON format for headers");
+      }
+
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error("Headers must be a valid object");
+      }
+
+      for (const [key, value] of Object.entries(parsed)) {
+        const trimmedVal = String(value || "").trim();
+
+        if (!trimmedVal) {
+          throw new Error(`Header "${key}" cannot be empty`);
+        }
+        if (!/^[\w-]+$/i.test(key)) {
+          throw new Error(`Invalid header name "${key}"`);
+        }
+        if (key.toLowerCase() === "content-type" && !/^application\/json$/i.test(trimmedVal)) {
+          throw new Error(`Content-Type must be "application/json"`);
+        }
+  }
+
+  return parsed;
+  }
+
   const PROJECT_ID       = window.PROJECT_ID;
   const form             = document.getElementById("rule-form");
   const singleRadio      = document.getElementById("resp-single");
@@ -126,22 +154,36 @@
 
       if (weightedRadio.checked) {
         payload.response_type = "weighted";
-        payload.body_template = Array.from(container.querySelectorAll(".weighted-entry")).map(ent => ({
-          weight:      parseInt(ent.querySelector(".weight").value,10)||0,
-          delay:       parseInt(ent.querySelector('input[name="delays[]"]').value,10)||0,
-          status_code: parseInt(ent.querySelector('input[name="status_codes[]"]').value,10)||200,
-          headers:     JSON.parse(ent.querySelector('textarea[name="hdrs[]"]').value||"{}"),
-          template:    ent.querySelector('textarea[name="bodies[]"]').value||""
-        }));
+        payload.body_template = Array.from(container.querySelectorAll(".weighted-entry")).map(ent => {
+          let headers;
+          try {
+            headers = validateHeaders(ent.querySelector('textarea[name="hdrs[]"]').value);
+          } catch (err) {
+            showToast(err.message, "danger");
+            throw err;
+          }
+          return {
+            weight:      parseInt(ent.querySelector(".weight").value,10)||0,
+            delay:       parseInt(ent.querySelector('input[name="delays[]"]').value,10)||0,
+            status_code: parseInt(ent.querySelector('input[name="status_codes[]"]').value,10)||200,
+            headers,
+            template:    ent.querySelector('textarea[name="bodies[]"]').value||""
+          };
+        });
       } else {
         payload.response_type = "single";
         payload.delay         = parseInt(fd.get("delay"),10)||0;
         payload.status_code   = parseInt(fd.get("status_code"),10)||200;
-        payload.headers       = JSON.parse(fd.get("headers")||"{}");
+
+        try {
+          payload.headers = validateHeaders(fd.get("headers"));
+        } catch (err) {
+          showToast(err.message, "danger");
+          return;
+        }
         payload.body_template = { template: fd.get("body_template") };
       }
 
-      // send to API
       try {
         await fetchJSON(`/api/projects/${PROJECT_ID}/rules`, {
           method:  "POST",

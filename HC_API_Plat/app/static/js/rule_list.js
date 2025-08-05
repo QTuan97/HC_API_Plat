@@ -41,6 +41,35 @@
     toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
   }
 
+  function validateHeaders(jsonStr) {
+  let parsed;
+      try {
+        parsed = JSON.parse(jsonStr || "{}");
+      } catch {
+        throw new Error("Invalid JSON format for headers");
+      }
+
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error("Headers must be a valid object");
+      }
+
+      for (const [key, value] of Object.entries(parsed)) {
+        const trimmedVal = String(value || "").trim();
+
+        if (!trimmedVal) {
+          throw new Error(`Header "${key}" cannot be empty`);
+        }
+        if (!/^[\w-]+$/i.test(key)) {
+          throw new Error(`Invalid header name "${key}"`);
+        }
+        if (key.toLowerCase() === "content-type" && !/^application\/json$/i.test(trimmedVal)) {
+          throw new Error(`Content-Type must be "application/json"`);
+        }
+      }
+
+      return parsed;
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     // — DOM refs —
     const PROJECT_ID      = window.PROJECT_ID;
@@ -183,14 +212,39 @@
         return loadRules(id);
       }
       if (btn.matches(".copy-rule")) {
-        try {
-          await navigator.clipboard.writeText(`${BASE_URL}${path}`);
-          showToast(`Copied: ${BASE_URL}${path}`);
-        } catch {
-          showToast("Copy failed","danger");
+          const r  = rules.find(x => String(x.id) === id);
+          if (!r) return;
+
+          const method = r.method.toUpperCase();
+          const url    = `"${BASE_URL}${r.path_regex}"`;
+
+          const headerEntries = (r.headers && Object.keys(r.headers).length > 0)
+            ? Object.entries(r.headers)
+            : [["Content-Type", "application/json"]];
+
+          const headers = headerEntries.flatMap(
+            ([k, v]) => ["-H", `"${k}: ${v}"`]
+          );
+
+          let dataPart = "";
+          if (["POST", "PUT", "PATCH"].includes(method)) {
+            const body = r.request_body
+              ? JSON.stringify(r.request_body).replace(/"/g, '\\"')
+              : "{}";
+            dataPart = ["-d", `"${body}"`].join(" ");
+          }
+
+          const parts = ["curl", "-X", method, url, ...headers];
+          if (dataPart) parts.push(dataPart);
+          const cmd = parts.join(" ");
+
+          navigator.clipboard.writeText(cmd)
+            .then(() => showToast("Copied curl command", "success"))
+            .catch(() => showToast("Copy failed", "danger"));
+
+          return;
         }
-        return;
-      }
+
       if (btn.matches(".edit-rule")) {
         currentEditId = id;
         const r = rules.find(x => String(x.id) === id);
@@ -271,22 +325,35 @@
 
       if (weightedRadio.checked) {
         updateData.response_type = "weighted";
-        updateData.body_template = [...weightedCtr.children].map(ent => ({
-          weight:      +ent.querySelector(".weight").value || 0,
-          delay:       +ent.querySelector('input[name="edit-delays[]"]').value || 0,
-          status_code: +ent.querySelector('input[name="edit-status_codes[]"]').value || 200,
-          headers:     JSON.parse(ent.querySelector('textarea[name="edit-hdrs[]"]').value || "{}"),
-          template:    ent.querySelector('textarea[name="edit-bodies[]"]').value || ""
-        }));
+        updateData.body_template = [...weightedCtr.children].map(ent => {
+          let headers;
+          try {
+            headers = validateHeaders(ent.querySelector('textarea[name="edit-hdrs[]"]').value);
+          } catch (err) {
+            showToast(err.message, "danger");
+            throw err;
+          }
+          return {
+            weight:      +ent.querySelector(".weight").value || 0,
+            delay:       +ent.querySelector('input[name="edit-delays[]"]').value || 0,
+            status_code: +ent.querySelector('input[name="edit-status_codes[]"]').value || 200,
+            headers,
+            template:    ent.querySelector('textarea[name="edit-bodies[]"]').value || ""
+          };
+        });
       } else {
         updateData.response_type = "single";
         updateData.delay         = +fd.get("delay") || 0;
         updateData.status_code   = +fd.get("status_code") || 200;
-        updateData.headers       = JSON.parse(fd.get("headers") || "{}");
+
+        try {
+          updateData.headers = validateHeaders(fd.get("headers"));
+        } catch (err) {
+          showToast(err.message, "danger");
+          return;
+        }
         updateData.body_template = { template: fd.get("body_template") };
       }
-
-      console.log("[edit] final payload:", updateData);
 
       try {
         const res = await fetch(`${API_BASE}/${currentEditId}`, {
